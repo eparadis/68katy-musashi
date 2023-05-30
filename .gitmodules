@@ -1,0 +1,3 @@
+[submodule "Musashi"]
+	path = Musashi
+	url = git@github.com:eparadis/Musashi.git
