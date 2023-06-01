@@ -13,6 +13,12 @@ void disassemble_program();
 #define INPUT_ADDRESS_HI 0x79fff
 #define OUTPUT_ADDRESS_LO 0x7a000
 #define OUTPUT_ADDRESS_HI 0x7bfff
+#define LED_ADDRESS_LO 0x7e000
+#define LED_ADDRESS_HI 0x7ffff
+#define SERIAL_STATUS_TXE_LO 0x7D000
+#define SERIAL_STATUS_TXE_HI 0x7DFFF
+#define SERIAL_STATUS_RDF_LO 0x7c000
+#define SERIAL_STATUS_RDF_HI 0x7cfff
 
 /* IRQ connections */
 #define IRQ_NMI_DEVICE 7
@@ -73,6 +79,7 @@ void output_device_update(void);
 int output_device_ack(void);
 unsigned int output_device_read(void);
 void output_device_write(unsigned int value);
+void led_write(unsigned int value);
 
 void int_controller_set(unsigned int value);
 void int_controller_clear(unsigned int value);
@@ -137,7 +144,10 @@ unsigned int cpu_read_byte(unsigned int address)
     return input_device_read();
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     return output_device_read();
+  } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
+    return 0; // always ready to transmit
   }
+
 	if(address > MAX_RAM)
 		exit_error("Attempted to read byte from RAM address %08x", address);
 	return READ_BYTE(g_ram, address);
@@ -157,7 +167,10 @@ unsigned int cpu_read_word(unsigned int address)
     return input_device_read();
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     return output_device_read();
+  } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
+    return 0; // always ready to transmit
   }
+
 	if(address > MAX_RAM)
 		exit_error("Attempted to read word from RAM address %08x", address);
 	return READ_WORD(g_ram, address);
@@ -177,7 +190,10 @@ unsigned int cpu_read_long(unsigned int address)
     return input_device_read();
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     return output_device_read();
+  } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
+    return 0; // always ready to transmit
   }
+
 	if(address > MAX_RAM)
 		exit_error("Attempted to read long from RAM address %08x", address);
 	return READ_LONG(g_ram, address);
@@ -212,7 +228,11 @@ void cpu_write_byte(unsigned int address, unsigned int value)
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     output_device_write(value&0xff);
     return;
+  } else if(address >= LED_ADDRESS_LO && address <= LED_ADDRESS_HI) {
+    led_write(value&0xff);
+    return;
   }
+
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %02x to RAM address %08x", value&0xff, address);
 	WRITE_BYTE(g_ram, address, value);
@@ -230,7 +250,11 @@ void cpu_write_word(unsigned int address, unsigned int value)
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     output_device_write(value&0xffff);
     return;
+  } else if(address >= LED_ADDRESS_LO && address <= LED_ADDRESS_HI) {
+    led_write(value&0xffff);
+    return;
   }
+
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %04x to RAM address %08x", value&0xffff, address);
 	WRITE_WORD(g_ram, address, value);
@@ -248,7 +272,11 @@ void cpu_write_long(unsigned int address, unsigned int value)
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     output_device_write(value);
     return;
+  } else if(address >= LED_ADDRESS_LO && address <= LED_ADDRESS_HI) {
+    led_write(value);
+    return;
   }
+
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %08x to RAM address %08x", value, address);
 	WRITE_LONG(g_ram, address, value);
@@ -385,6 +413,11 @@ void output_device_write(unsigned int value)
 	}
 }
 
+void led_write(unsigned int value)
+{
+  (void)value;
+  //printf("LED: %08b\n", value);
+}
 
 /* Implementation for the interrupt controller */
 void int_controller_set(unsigned int value)
