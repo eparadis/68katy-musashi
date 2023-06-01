@@ -25,11 +25,12 @@ void disassemble_program();
 #define IRQ_INPUT_DEVICE 2
 #define IRQ_OUTPUT_DEVICE 1
 
-/* Time between characters sent to output device (seconds) */
-#define OUTPUT_DEVICE_PERIOD 0.01
+/* Time between characters sent to output device (host clock ticks) */
+#define OUTPUT_DEVICE_PERIOD (CLOCKS_PER_SEC/9600)
 
 /* ROM and RAM sizes */
-#define MAX_ROM 0x77fff
+// #define MAX_ROM 0x77fff
+#define MAX_ROM 0x0 // no ROM
 #define MAX_RAM 0xfffff
 
 
@@ -94,12 +95,12 @@ unsigned int g_nmi = 0;                         /* 1 if nmi pending */
 int          g_input_device_value = -1;         /* Current value in input device */
 
 unsigned int g_output_device_ready = 0;         /* 1 if output device is ready */
-time_t       g_output_device_last_output;       /* Time of last char output */
+clock_t       g_output_device_last_output;       /* Time of last char output */
 
 unsigned int g_int_controller_pending = 0;      /* list of pending interrupts */
 unsigned int g_int_controller_highest_int = 0;  /* Highest pending interrupt */
 
-unsigned char g_rom[MAX_ROM+1];                 /* ROM */
+// unsigned char g_rom[MAX_ROM+1];                 /* ROM */
 unsigned char g_ram[MAX_RAM+1];                 /* RAM */
 unsigned int  g_fc;                             /* Current function code from CPU */
 
@@ -132,12 +133,12 @@ void exit_error(char* fmt, ...)
 /* Read data from RAM, ROM, or a device */
 unsigned int cpu_read_byte(unsigned int address)
 {
-	if(g_fc & 2)	/* Program */
-	{
-		if(address > MAX_ROM)
-			exit_error("Attempted to read byte from ROM address %08x", address);
-		return READ_BYTE(g_rom, address);
-	}
+	// if(g_fc & 2)	/* Program */
+	// {
+	// 	if(address > MAX_ROM)
+	// 		exit_error("Attempted to read byte from ROM address %08x", address);
+	// 	return READ_BYTE(g_rom, address);
+	// }
 
 	/* Otherwise it's data space */
   if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
@@ -145,7 +146,13 @@ unsigned int cpu_read_byte(unsigned int address)
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     return output_device_read();
   } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
-    return 0; // always ready to transmit
+    // TXE is 0 when ready
+    // g_output_Device_ready is 1 when ready
+    return !g_output_device_ready;
+  } else if(address >= SERIAL_STATUS_RDF_LO && address <= SERIAL_STATUS_RDF_HI) {
+    // RDF is 0 when ready
+    // g_input_device_value is not -1 when data exists
+    return g_input_device_value == -1;
   }
 
 	if(address > MAX_RAM)
@@ -155,12 +162,12 @@ unsigned int cpu_read_byte(unsigned int address)
 
 unsigned int cpu_read_word(unsigned int address)
 {
-	if(g_fc & 2)	/* Program */
-	{
-		if(address > MAX_ROM)
-			exit_error("Attempted to read word from ROM address %08x", address);
-		return READ_WORD(g_rom, address);
-	}
+	// if(g_fc & 2)	/* Program */
+	// {
+	// 	if(address > MAX_ROM)
+	// 		exit_error("Attempted to read word from ROM address %08x", address);
+	// 	return READ_WORD(g_rom, address);
+	// }
 
 	/* Otherwise it's data space */
 	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
@@ -168,7 +175,7 @@ unsigned int cpu_read_word(unsigned int address)
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     return output_device_read();
   } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
-    return 0; // always ready to transmit
+    exit_error("attempted to read word from serial status txe address %08x", address);
   }
 
 	if(address > MAX_RAM)
@@ -178,12 +185,12 @@ unsigned int cpu_read_word(unsigned int address)
 
 unsigned int cpu_read_long(unsigned int address)
 {
-	if(g_fc & 2)	/* Program */
-	{
-		if(address > MAX_ROM)
-			exit_error("Attempted to read long from ROM address %08x", address);
-		return READ_LONG(g_rom, address);
-	}
+	// if(g_fc & 2)	/* Program */
+	// {
+	// 	if(address > MAX_ROM)
+	// 		exit_error("Attempted to read long from ROM address %08x", address);
+	// 	return READ_LONG(g_rom, address);
+	// }
 
 	/* Otherwise it's data space */
 	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
@@ -191,7 +198,7 @@ unsigned int cpu_read_long(unsigned int address)
   } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
     return output_device_read();
   } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
-    return 0; // always ready to transmit
+    exit_error("attempted to read word from serial status txe address %08x", address);
   }
 
 	if(address > MAX_RAM)
@@ -202,16 +209,16 @@ unsigned int cpu_read_long(unsigned int address)
 
 unsigned int cpu_read_word_dasm(unsigned int address)
 {
-	if(address > MAX_ROM)
-		exit_error("Disassembler attempted to read word from ROM address %08x", address);
-	return READ_WORD(g_rom, address);
+	if(address > MAX_RAM)
+		exit_error("Disassembler attempted to read word from RAM address %08x", address);
+	return READ_WORD(g_ram, address);
 }
 
 unsigned int cpu_read_long_dasm(unsigned int address)
 {
-	if(address > MAX_ROM)
+	if(address > MAX_RAM)
 		exit_error("Dasm attempted to read long from ROM address %08x", address);
-	return READ_LONG(g_rom, address);
+	return READ_LONG(g_ram, address);
 }
 
 
@@ -372,7 +379,7 @@ void input_device_write(unsigned int value)
 /* Implementation for the output device */
 void output_device_reset(void)
 {
-	g_output_device_last_output = time(NULL);
+	g_output_device_last_output = clock();
 	g_output_device_ready = 0;
 	int_controller_clear(IRQ_OUTPUT_DEVICE);
 }
@@ -381,7 +388,7 @@ void output_device_update(void)
 {
 	if(!g_output_device_ready)
 	{
-		if((time(NULL) - g_output_device_last_output) >= OUTPUT_DEVICE_PERIOD)
+		if((clock() - g_output_device_last_output) >= OUTPUT_DEVICE_PERIOD)
 		{
 			g_output_device_ready = 1;
 			int_controller_set(IRQ_OUTPUT_DEVICE);
@@ -407,7 +414,7 @@ void output_device_write(unsigned int value)
 	{
 		ch = value & 0xff;
 		printf("%c", ch);
-		g_output_device_last_output = time(NULL);
+		g_output_device_last_output = clock();
 		g_output_device_ready = 0;
 		int_controller_clear(IRQ_OUTPUT_DEVICE);
 	}
@@ -429,7 +436,7 @@ void int_controller_set(unsigned int value)
 	if(old_pending != g_int_controller_pending && value > g_int_controller_highest_int)
 	{
 		g_int_controller_highest_int = value;
-		m68k_set_irq(g_int_controller_highest_int);
+		m68k_set_irq(g_int_controller_highest_int); 
 	}
 }
 
@@ -503,22 +510,22 @@ void disassemble_program()
 	fflush(stdout);
 }
 
-void cpu_instr_callback(int pc)
+void cpu_instr_callback(int _pc)
 {
-	(void)pc;
+	(void)_pc;
 /* The following code would print out instructions as they are executed */
-/*
-	static char buff[100];
-	static char buff2[100];
-	static unsigned int pc;
-	static unsigned int instr_size;
 
-	pc = m68k_get_reg(NULL, M68K_REG_PC);
-	instr_size = m68k_disassemble(buff, pc, M68K_CPU_TYPE_68000);
-	make_hex(buff2, pc, instr_size);
-	printf("E %03x: %-20s: %s\n", pc, buff2, buff);
-	fflush(stdout);
-*/
+	// static char buff[100];
+	// static char buff2[100];
+	// static unsigned int pc;
+	// static unsigned int instr_size;
+
+	// pc = m68k_get_reg(NULL, M68K_REG_PC);
+	// instr_size = m68k_disassemble(buff, pc, M68K_CPU_TYPE_68000);
+	// make_hex(buff2, pc, instr_size);
+	// printf("E %03x: %-20s: %s\n", pc, buff2, buff);
+	// fflush(stdout);
+
 }
 
 
@@ -537,7 +544,8 @@ int main(int argc, char* argv[])
 	if((fhandle = fopen(argv[1], "rb")) == NULL)
 		exit_error("Unable to open %s", argv[1]);
 
-	if(fread(g_rom, 1, MAX_ROM+1, fhandle) <= 0)
+	// if(fread(g_rom, 1, MAX_ROM+1, fhandle) <= 0)
+	if(fread(g_ram, 1, MAX_RAM+1, fhandle) <= 0)
 		exit_error("Error reading %s", argv[1]);
 
 //	disassemble_program();
