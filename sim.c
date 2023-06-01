@@ -9,8 +9,10 @@
 void disassemble_program();
 
 /* Memory-mapped IO ports */
-#define INPUT_ADDRESS 0x800000
-#define OUTPUT_ADDRESS 0x400000
+#define INPUT_ADDRESS_LO 0x78000
+#define INPUT_ADDRESS_HI 0x79fff
+#define OUTPUT_ADDRESS_LO 0x7a000
+#define OUTPUT_ADDRESS_HI 0x7bfff
 
 /* IRQ connections */
 #define IRQ_NMI_DEVICE 7
@@ -18,11 +20,11 @@ void disassemble_program();
 #define IRQ_OUTPUT_DEVICE 1
 
 /* Time between characters sent to output device (seconds) */
-#define OUTPUT_DEVICE_PERIOD 1
+#define OUTPUT_DEVICE_PERIOD 0.01
 
 /* ROM and RAM sizes */
-#define MAX_ROM 0xfff
-#define MAX_RAM 0xff
+#define MAX_ROM 0x77fff
+#define MAX_RAM 0xfffff
 
 
 /* Read/write macros */
@@ -131,15 +133,11 @@ unsigned int cpu_read_byte(unsigned int address)
 	}
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case INPUT_ADDRESS:
-			return input_device_read();
-		case OUTPUT_ADDRESS:
-			return output_device_read();
-		default:
-			break;
-	}
+  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
+    return input_device_read();
+  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
+    return output_device_read();
+  }
 	if(address > MAX_RAM)
 		exit_error("Attempted to read byte from RAM address %08x", address);
 	return READ_BYTE(g_ram, address);
@@ -155,15 +153,11 @@ unsigned int cpu_read_word(unsigned int address)
 	}
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case INPUT_ADDRESS:
-			return input_device_read();
-		case OUTPUT_ADDRESS:
-			return output_device_read();
-		default:
-			break;
-	}
+	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
+    return input_device_read();
+  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
+    return output_device_read();
+  }
 	if(address > MAX_RAM)
 		exit_error("Attempted to read word from RAM address %08x", address);
 	return READ_WORD(g_ram, address);
@@ -179,15 +173,11 @@ unsigned int cpu_read_long(unsigned int address)
 	}
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case INPUT_ADDRESS:
-			return input_device_read();
-		case OUTPUT_ADDRESS:
-			return output_device_read();
-		default:
-			break;
-	}
+	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
+    return input_device_read();
+  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
+    return output_device_read();
+  }
 	if(address > MAX_RAM)
 		exit_error("Attempted to read long from RAM address %08x", address);
 	return READ_LONG(g_ram, address);
@@ -216,17 +206,13 @@ void cpu_write_byte(unsigned int address, unsigned int value)
 		exit_error("Attempted to write %02x to ROM address %08x", value&0xff, address);
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case INPUT_ADDRESS:
-			input_device_write(value&0xff);
-			return;
-		case OUTPUT_ADDRESS:
-			output_device_write(value&0xff);
-			return;
-		default:
-			break;
-	}
+  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
+    input_device_write(value&0xff);
+    return;
+  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
+    output_device_write(value&0xff);
+    return;
+  }
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %02x to RAM address %08x", value&0xff, address);
 	WRITE_BYTE(g_ram, address, value);
@@ -238,17 +224,13 @@ void cpu_write_word(unsigned int address, unsigned int value)
 		exit_error("Attempted to write %04x to ROM address %08x", value&0xffff, address);
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case INPUT_ADDRESS:
-			input_device_write(value&0xffff);
-			return;
-		case OUTPUT_ADDRESS:
-			output_device_write(value&0xffff);
-			return;
-		default:
-			break;
-	}
+  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
+    input_device_write(value&0xffff);
+    return;
+  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
+    output_device_write(value&0xffff);
+    return;
+  }
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %04x to RAM address %08x", value&0xffff, address);
 	WRITE_WORD(g_ram, address, value);
@@ -260,17 +242,13 @@ void cpu_write_long(unsigned int address, unsigned int value)
 		exit_error("Attempted to write %08x to ROM address %08x", value, address);
 
 	/* Otherwise it's data space */
-	switch(address)
-	{
-		case INPUT_ADDRESS:
-			input_device_write(value);
-			return;
-		case OUTPUT_ADDRESS:
-			output_device_write(value);
-			return;
-		default:
-			break;
-	}
+  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
+    input_device_write(value);
+    return;
+  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
+    output_device_write(value);
+    return;
+  }
 	if(address > MAX_RAM)
 		exit_error("Attempted to write %08x to RAM address %08x", value, address);
 	WRITE_LONG(g_ram, address, value);
