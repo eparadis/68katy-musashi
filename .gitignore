@@ -1,0 +1,6 @@
+*.o
+.vscode
+
+m68kmake
+
+sim
