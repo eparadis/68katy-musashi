@@ -17,8 +17,8 @@
 void disassemble_program();
 
 /* Data */
-unsigned int g_quit = 0; /* 1 if we want to quit */
-unsigned int g_nmi = 0;  /* 1 if nmi pending */
+unsigned int flag_quit = 0; /* 1 if we want to quit */
+unsigned int flag_nmi_pending = 0;  /* 1 if nmi pending */
 
 int g_input_device_value = -1; /* Current value in input device */
 
@@ -75,11 +75,11 @@ void get_user_input(void)
     switch (ch)
     {
     case 0x1b:
-      g_quit = 1;
+      flag_quit = 1;
       break;
     case '~':
       if (last_ch != ch)
-        g_nmi = 1;
+        flag_nmi_pending = 1;
       break;
     default:
       g_input_device_value = ch;
@@ -166,8 +166,8 @@ int main(int argc, char *argv[])
   output_device_reset();
   nmi_device_reset();
 
-  g_quit = 0;
-  while (!g_quit)
+  flag_quit = 0;
+  while (!flag_quit)
   {
     // Our loop requires some interleaving to allow us to update the
     // input, output, and nmi devices.

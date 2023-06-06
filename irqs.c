@@ -4,8 +4,8 @@
 #include "timer.h"
 #include "input_device.h"
 
-unsigned int g_int_controller_pending = 0;     /* list of pending interrupts */
-unsigned int g_int_controller_highest_int = 0; /* Highest pending interrupt */
+unsigned int irq_controller_pending = 0;     /* list of pending interrupts */
+unsigned int irq_controller_highest_int = 0; /* Highest pending interrupt */
 
 /* Called when the CPU acknowledges an interrupt */
 int cpu_irq_ack(int level)
@@ -29,25 +29,25 @@ int cpu_irq_ack(int level)
 /* Implementation for the interrupt controller */
 void int_controller_set(unsigned int value)
 {
-  unsigned int old_pending = g_int_controller_pending;
+  unsigned int old_pending = irq_controller_pending;
 
-  g_int_controller_pending |= (1 << value);
+  irq_controller_pending |= (1 << value);
 
-  if (old_pending != g_int_controller_pending && value > g_int_controller_highest_int)
+  if (old_pending != irq_controller_pending && value > irq_controller_highest_int)
   {
-    g_int_controller_highest_int = value;
-    m68k_set_irq(g_int_controller_highest_int);
+    irq_controller_highest_int = value;
+    m68k_set_irq(irq_controller_highest_int);
   }
 }
 
 void int_controller_clear(unsigned int value)
 {
-  g_int_controller_pending &= ~(1 << value);
+  irq_controller_pending &= ~(1 << value);
 
-  for (g_int_controller_highest_int = 7; g_int_controller_highest_int > 0; g_int_controller_highest_int--)
-    if (g_int_controller_pending & (1 << g_int_controller_highest_int))
+  for (irq_controller_highest_int = 7; irq_controller_highest_int > 0; irq_controller_highest_int--)
+    if (irq_controller_pending & (1 << irq_controller_highest_int))
       break;
 
-  m68k_set_irq(g_int_controller_highest_int);
+  m68k_set_irq(irq_controller_highest_int);
 }
 

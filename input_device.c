@@ -14,7 +14,7 @@ void input_device_reset(void)
 
 void input_device_update(void)
 {
-  if (g_input_device_value >= 0)
+  if (input_device_data_ready())
     int_controller_set(IRQ_DATA_RDY);
 }
 
@@ -29,6 +29,11 @@ unsigned int input_device_read(void)
   int_controller_clear(IRQ_DATA_RDY);
   g_input_device_value = -1;
   return value;
+}
+
+unsigned int input_device_data_ready(void)
+{
+  return g_input_device_value >= 0;
 }
 
 void input_device_write(unsigned int value)

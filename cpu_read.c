@@ -29,8 +29,7 @@ unsigned int cpu_read_byte(unsigned int address)
   else if (address >= SERIAL_STATUS_RDF_LO && address <= SERIAL_STATUS_RDF_HI)
   {
     // RDF is 0 when ready
-    // g_input_device_value is not -1 when data exists
-    return g_input_device_value == -1;
+    return input_device_data_ready() ? 0 : 1;
   }
 
   if (address > MAX_RAM)

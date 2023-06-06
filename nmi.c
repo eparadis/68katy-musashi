@@ -3,19 +3,19 @@
 #include <stdio.h>
 #include "m68k.h"
 
-extern unsigned int g_nmi;
+extern unsigned int flag_nmi_pending;
 
 /* Implementation for the NMI device */
 void nmi_device_reset(void)
 {
-  g_nmi = 0;
+  flag_nmi_pending = 0;
 }
 
 void nmi_device_update(void)
 {
-  if (g_nmi)
+  if (flag_nmi_pending)
   {
-    g_nmi = 0;
+    flag_nmi_pending = 0;
     int_controller_set(IRQ_NMI);
   }
 }
