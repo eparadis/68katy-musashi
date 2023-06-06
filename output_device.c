@@ -42,7 +42,7 @@ void output_device_write(unsigned int value)
   if (g_output_device_ready)
   {
     ch = value & 0xff;
-    printf("%c", ch);
+    printf("%c", ch); fflush(stdout);
     g_output_device_last_output = clock();
     g_output_device_ready = 0;
     // int_controller_clear(IRQ_OUTPUT_DEVICE);
