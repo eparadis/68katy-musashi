@@ -12,10 +12,6 @@ void cpu_pulse_reset(void);
 void cpu_set_fc(unsigned int fc);
 int cpu_irq_ack(int level);
 
-void nmi_device_reset(void);
-void nmi_device_update(void);
-int nmi_device_ack(void);
-
 void input_device_reset(void);
 void input_device_update(void);
 int input_device_ack(void);

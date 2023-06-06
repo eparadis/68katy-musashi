@@ -8,16 +8,9 @@
 #include "cpu_read.h"
 #include "cpu_write.h"
 #include "memory_map.h"
+#include "irqs.h"
 
 void disassemble_program();
-
-/* IRQ connections */
-// the 68Katy use a 68008 which only has two interrupt pins:
-// /IPL2+/IPL0 (combined into one pin) -- connected to 100 Hz oscillator
-// /IPL1 -- connected to USB serial FIFO RXF: "When low, there is data available in the FIFO which can be read"
-#define IRQ_TIMER 5 // signal /IP2+IP0, connected to RXF
-#define IRQ_DATA_RDY 2 // signal /IP1, when active there is data to receive
-#define IRQ_NMI 7 // doesn't exist on the real 68Katy
 
 /* Time between characters sent to output device (host clock ticks) */
 #define OUTPUT_DEVICE_PERIOD (CLOCKS_PER_SEC/9600)
@@ -102,32 +95,6 @@ int cpu_irq_ack(int level)
 	}
 	return M68K_INT_ACK_SPURIOUS;
 }
-
-
-
-
-/* Implementation for the NMI device */
-void nmi_device_reset(void)
-{
-	g_nmi = 0;
-}
-
-void nmi_device_update(void)
-{
-	if(g_nmi)
-	{
-		g_nmi = 0;
-		int_controller_set(IRQ_NMI);
-	}
-}
-
-int nmi_device_ack(void)
-{
-	printf("\nNMI\n");fflush(stdout);
-	int_controller_clear(IRQ_NMI);
-	return M68K_INT_ACK_AUTOVECTOR;
-}
-
 
 /* Implementation for the input device */
 void input_device_reset(void)
