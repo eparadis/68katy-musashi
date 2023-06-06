@@ -162,9 +162,7 @@ int main(int argc, char *argv[])
   m68k_init();
   m68k_set_cpu_type(M68K_CPU_TYPE_68000);
   m68k_pulse_reset();
-  input_device_reset();
-  output_device_reset();
-  nmi_device_reset();
+  timer_device_reset();
 
   flag_quit = 0;
   while (!flag_quit)
