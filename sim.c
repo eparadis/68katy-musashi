@@ -21,12 +21,20 @@ void disassemble_program();
 #define SERIAL_STATUS_RDF_HI 0x7cfff
 
 /* IRQ connections */
-#define IRQ_NMI_DEVICE 7
-#define IRQ_INPUT_DEVICE 2
-#define IRQ_OUTPUT_DEVICE 1
+// the 68Katy use a 68008 which only has two interrupt pins:
+// /IPL2+/IPL0 (combined into one pin) -- connected to 100 Hz oscillator
+// /IPL1 -- connected to USB serial FIFO RXF: "When low, there is data available in the FIFO which can be read"
+#define IRQ_TIMER 5 // signal /IP2+IP0, connected to RXF
+#define IRQ_DATA_RDY 2 // signal /IP1, when active there is data to receive
+#define IRQ_NMI 7 // doesn't exist on the real 68Katy
 
 /* Time between characters sent to output device (host clock ticks) */
 #define OUTPUT_DEVICE_PERIOD (CLOCKS_PER_SEC/9600)
+
+// Timer period in clock_t units
+//   clocks  |  sec
+//   sec     |  100 cycles
+#define TIMER_PERIOD (CLOCKS_PER_SEC/100)
 
 /* ROM and RAM sizes */
 // #define MAX_ROM 0x77fff
@@ -80,7 +88,11 @@ void output_device_update(void);
 int output_device_ack(void);
 unsigned int output_device_read(void);
 void output_device_write(unsigned int value);
+
 void led_write(unsigned int value);
+
+int timer_device_ack(void);
+void timer_update(void);
 
 void int_controller_set(unsigned int value);
 void int_controller_clear(unsigned int value);
@@ -99,6 +111,8 @@ clock_t       g_output_device_last_output;       /* Time of last char output */
 
 unsigned int g_int_controller_pending = 0;      /* list of pending interrupts */
 unsigned int g_int_controller_highest_int = 0;  /* Highest pending interrupt */
+
+clock_t g_timer_last_update = 0;                /* Time of last timer update */
 
 // unsigned char g_rom[MAX_ROM+1];                 /* ROM */
 unsigned char g_ram[MAX_RAM+1];                 /* RAM */
@@ -133,13 +147,6 @@ void exit_error(char* fmt, ...)
 /* Read data from RAM, ROM, or a device */
 unsigned int cpu_read_byte(unsigned int address)
 {
-	// if(g_fc & 2)	/* Program */
-	// {
-	// 	if(address > MAX_ROM)
-	// 		exit_error("Attempted to read byte from ROM address %08x", address);
-	// 	return READ_BYTE(g_rom, address);
-	// }
-
 	/* Otherwise it's data space */
   if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
     return input_device_read();
@@ -162,13 +169,6 @@ unsigned int cpu_read_byte(unsigned int address)
 
 unsigned int cpu_read_word(unsigned int address)
 {
-	// if(g_fc & 2)	/* Program */
-	// {
-	// 	if(address > MAX_ROM)
-	// 		exit_error("Attempted to read word from ROM address %08x", address);
-	// 	return READ_WORD(g_rom, address);
-	// }
-
 	/* Otherwise it's data space */
 	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
     return input_device_read();
@@ -185,13 +185,6 @@ unsigned int cpu_read_word(unsigned int address)
 
 unsigned int cpu_read_long(unsigned int address)
 {
-	// if(g_fc & 2)	/* Program */
-	// {
-	// 	if(address > MAX_ROM)
-	// 		exit_error("Attempted to read long from ROM address %08x", address);
-	// 	return READ_LONG(g_rom, address);
-	// }
-
 	/* Otherwise it's data space */
 	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
     return input_device_read();
@@ -205,7 +198,6 @@ unsigned int cpu_read_long(unsigned int address)
 		exit_error("Attempted to read long from RAM address %08x", address);
 	return READ_LONG(g_ram, address);
 }
-
 
 unsigned int cpu_read_word_dasm(unsigned int address)
 {
@@ -308,12 +300,16 @@ int cpu_irq_ack(int level)
 {
 	switch(level)
 	{
-		case IRQ_NMI_DEVICE:
+		case IRQ_NMI:
 			return nmi_device_ack();
-		case IRQ_INPUT_DEVICE:
-			return input_device_ack();
-		case IRQ_OUTPUT_DEVICE:
-			return output_device_ack();
+		// case IRQ_INPUT_DEVICE:
+			// return input_device_ack();
+		// case IRQ_OUTPUT_DEVICE:
+			// return output_device_ack();
+    case IRQ_DATA_RDY:
+      return input_device_ack();
+    case IRQ_TIMER:
+      return timer_device_ack();
 	}
 	return M68K_INT_ACK_SPURIOUS;
 }
@@ -332,14 +328,14 @@ void nmi_device_update(void)
 	if(g_nmi)
 	{
 		g_nmi = 0;
-		int_controller_set(IRQ_NMI_DEVICE);
+		int_controller_set(IRQ_NMI);
 	}
 }
 
 int nmi_device_ack(void)
 {
 	printf("\nNMI\n");fflush(stdout);
-	int_controller_clear(IRQ_NMI_DEVICE);
+	int_controller_clear(IRQ_NMI);
 	return M68K_INT_ACK_AUTOVECTOR;
 }
 
@@ -348,13 +344,13 @@ int nmi_device_ack(void)
 void input_device_reset(void)
 {
 	g_input_device_value = -1;
-	int_controller_clear(IRQ_INPUT_DEVICE);
+	int_controller_clear(IRQ_DATA_RDY);
 }
 
 void input_device_update(void)
 {
 	if(g_input_device_value >= 0)
-		int_controller_set(IRQ_INPUT_DEVICE);
+		int_controller_set(IRQ_DATA_RDY);
 }
 
 int input_device_ack(void)
@@ -365,7 +361,7 @@ int input_device_ack(void)
 unsigned int input_device_read(void)
 {
 	int value = g_input_device_value > 0 ? g_input_device_value : 0;
-	int_controller_clear(IRQ_INPUT_DEVICE);
+	int_controller_clear(IRQ_DATA_RDY);
 	g_input_device_value = -1;
 	return value;
 }
@@ -381,7 +377,7 @@ void output_device_reset(void)
 {
 	g_output_device_last_output = clock();
 	g_output_device_ready = 0;
-	int_controller_clear(IRQ_OUTPUT_DEVICE);
+	// int_controller_clear(IRQ_OUTPUT_DEVICE);
 }
 
 void output_device_update(void)
@@ -391,7 +387,7 @@ void output_device_update(void)
 		if((clock() - g_output_device_last_output) >= OUTPUT_DEVICE_PERIOD)
 		{
 			g_output_device_ready = 1;
-			int_controller_set(IRQ_OUTPUT_DEVICE);
+			// int_controller_set(IRQ_OUTPUT_DEVICE);
 		}
 	}
 }
@@ -403,7 +399,7 @@ int output_device_ack(void)
 
 unsigned int output_device_read(void)
 {
-	int_controller_clear(IRQ_OUTPUT_DEVICE);
+	// int_controller_clear(IRQ_OUTPUT_DEVICE);
 	return 0;
 }
 
@@ -416,7 +412,7 @@ void output_device_write(unsigned int value)
 		printf("%c", ch);
 		g_output_device_last_output = clock();
 		g_output_device_ready = 0;
-		int_controller_clear(IRQ_OUTPUT_DEVICE);
+		// int_controller_clear(IRQ_OUTPUT_DEVICE);
 	}
 }
 
@@ -424,6 +420,25 @@ void led_write(unsigned int value)
 {
   (void)value;
   //printf("LED: %08b\n", value);
+}
+
+/* Implementation for the timer device */
+void timer_update() {
+  if( clock() - g_timer_last_update >= TIMER_PERIOD ) {
+    g_timer_last_update = clock();
+    int_controller_set(IRQ_TIMER);
+  }
+}
+
+void timer_device_reset(void)
+{
+  g_timer_last_update = clock();
+  int_controller_clear(IRQ_TIMER);
+}
+
+int timer_device_ack(void)
+{
+  return M68K_INT_ACK_AUTOVECTOR; // ???
 }
 
 /* Implementation for the interrupt controller */
@@ -444,7 +459,7 @@ void int_controller_clear(unsigned int value)
 {
 	g_int_controller_pending &= ~(1<<value);
 
-	for(g_int_controller_highest_int = 7;g_int_controller_highest_int > 0;g_int_controller_highest_int--)
+	for(g_int_controller_highest_int = 7; g_int_controller_highest_int > 0; g_int_controller_highest_int--)
 		if(g_int_controller_pending & (1<<g_int_controller_highest_int))
 			break;
 
@@ -575,6 +590,7 @@ int main(int argc, char* argv[])
 		output_device_update();
 		input_device_update();
 		nmi_device_update();
+    timer_update();
 	}
 
 	return 0;
