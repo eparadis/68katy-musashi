@@ -12,14 +12,6 @@ void cpu_pulse_reset(void);
 void cpu_set_fc(unsigned int fc);
 int cpu_irq_ack(int level);
 
-void output_device_reset(void);
-void output_device_update(void);
-int output_device_ack(void);
-unsigned int output_device_read(void);
-void output_device_write(unsigned int value);
-
-void led_write(unsigned int value);
-
 int timer_device_ack(void);
 void timer_update(void);
 

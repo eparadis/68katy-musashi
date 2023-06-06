@@ -2,6 +2,7 @@
 #include "memory_map.h"
 #include "sim.h"
 #include "input_device.h"
+#include "output_device.h"
 
 extern unsigned int g_output_device_ready;
 extern int          g_input_device_value;
