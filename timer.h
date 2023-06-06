@@ -1,5 +1,5 @@
-#ifndef _TIMER_H___
-#define _TIMER_H___
+#ifndef _TIMER_H_______
+#define _TIMER_H_______
 
 #include <time.h>
 
