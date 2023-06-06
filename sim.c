@@ -5,20 +5,10 @@
 #include "sim.h"
 #include "m68k.h"
 #include "osd.h"
+#include "cpu_read.h"
+#include "memory_map.h"
 
 void disassemble_program();
-
-/* Memory-mapped IO ports */
-#define INPUT_ADDRESS_LO 0x78000
-#define INPUT_ADDRESS_HI 0x79fff
-#define OUTPUT_ADDRESS_LO 0x7a000
-#define OUTPUT_ADDRESS_HI 0x7bfff
-#define LED_ADDRESS_LO 0x7e000
-#define LED_ADDRESS_HI 0x7ffff
-#define SERIAL_STATUS_TXE_LO 0x7D000
-#define SERIAL_STATUS_TXE_HI 0x7DFFF
-#define SERIAL_STATUS_RDF_LO 0x7c000
-#define SERIAL_STATUS_RDF_HI 0x7cfff
 
 /* IRQ connections */
 // the 68Katy use a 68008 which only has two interrupt pins:
@@ -36,21 +26,6 @@ void disassemble_program();
 //   sec     |  100 cycles
 #define TIMER_PERIOD (CLOCKS_PER_SEC/100)
 
-/* ROM and RAM sizes */
-// #define MAX_ROM 0x77fff
-#define MAX_ROM 0x0 // no ROM
-#define MAX_RAM 0xfffff
-
-
-/* Read/write macros */
-#define READ_BYTE(BASE, ADDR) (BASE)[ADDR]
-#define READ_WORD(BASE, ADDR) (((BASE)[ADDR]<<8) |			\
-							  (BASE)[(ADDR)+1])
-#define READ_LONG(BASE, ADDR) (((BASE)[ADDR]<<24) |			\
-							  ((BASE)[(ADDR)+1]<<16) |		\
-							  ((BASE)[(ADDR)+2]<<8) |		\
-							  (BASE)[(ADDR)+3])
-
 #define WRITE_BYTE(BASE, ADDR, VAL) (BASE)[ADDR] = (VAL)&0xff
 #define WRITE_WORD(BASE, ADDR, VAL) (BASE)[ADDR] = ((VAL)>>8) & 0xff;		\
 									(BASE)[(ADDR)+1] = (VAL)&0xff
@@ -58,47 +33,6 @@ void disassemble_program();
 									(BASE)[(ADDR)+1] = ((VAL)>>16)&0xff;	\
 									(BASE)[(ADDR)+2] = ((VAL)>>8)&0xff;		\
 									(BASE)[(ADDR)+3] = (VAL)&0xff
-
-
-/* Prototypes */
-void exit_error(char* fmt, ...);
-
-unsigned int cpu_read_byte(unsigned int address);
-unsigned int cpu_read_word(unsigned int address);
-unsigned int cpu_read_long(unsigned int address);
-void cpu_write_byte(unsigned int address, unsigned int value);
-void cpu_write_word(unsigned int address, unsigned int value);
-void cpu_write_long(unsigned int address, unsigned int value);
-void cpu_pulse_reset(void);
-void cpu_set_fc(unsigned int fc);
-int cpu_irq_ack(int level);
-
-void nmi_device_reset(void);
-void nmi_device_update(void);
-int nmi_device_ack(void);
-
-void input_device_reset(void);
-void input_device_update(void);
-int input_device_ack(void);
-unsigned int input_device_read(void);
-void input_device_write(unsigned int value);
-
-void output_device_reset(void);
-void output_device_update(void);
-int output_device_ack(void);
-unsigned int output_device_read(void);
-void output_device_write(unsigned int value);
-
-void led_write(unsigned int value);
-
-int timer_device_ack(void);
-void timer_update(void);
-
-void int_controller_set(unsigned int value);
-void int_controller_clear(unsigned int value);
-
-void get_user_input(void);
-
 
 /* Data */
 unsigned int g_quit = 0;                        /* 1 if we want to quit */
@@ -142,77 +76,6 @@ void exit_error(char* fmt, ...)
 
 	exit(EXIT_FAILURE);
 }
-
-
-/* Read data from RAM, ROM, or a device */
-unsigned int cpu_read_byte(unsigned int address)
-{
-	/* Otherwise it's data space */
-  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
-    return input_device_read();
-  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
-    return output_device_read();
-  } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
-    // TXE is 0 when ready
-    // g_output_Device_ready is 1 when ready
-    return !g_output_device_ready;
-  } else if(address >= SERIAL_STATUS_RDF_LO && address <= SERIAL_STATUS_RDF_HI) {
-    // RDF is 0 when ready
-    // g_input_device_value is not -1 when data exists
-    return g_input_device_value == -1;
-  }
-
-	if(address > MAX_RAM)
-		exit_error("Attempted to read byte from RAM address %08x", address);
-	return READ_BYTE(g_ram, address);
-}
-
-unsigned int cpu_read_word(unsigned int address)
-{
-	/* Otherwise it's data space */
-	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
-    return input_device_read();
-  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
-    return output_device_read();
-  } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
-    exit_error("attempted to read word from serial status txe address %08x", address);
-  }
-
-	if(address > MAX_RAM)
-		exit_error("Attempted to read word from RAM address %08x", address);
-	return READ_WORD(g_ram, address);
-}
-
-unsigned int cpu_read_long(unsigned int address)
-{
-	/* Otherwise it's data space */
-	if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
-    return input_device_read();
-  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
-    return output_device_read();
-  } else if(address >= SERIAL_STATUS_TXE_LO && address <= SERIAL_STATUS_TXE_HI) {
-    exit_error("attempted to read word from serial status txe address %08x", address);
-  }
-
-	if(address > MAX_RAM)
-		exit_error("Attempted to read long from RAM address %08x", address);
-	return READ_LONG(g_ram, address);
-}
-
-unsigned int cpu_read_word_dasm(unsigned int address)
-{
-	if(address > MAX_RAM)
-		exit_error("Disassembler attempted to read word from RAM address %08x", address);
-	return READ_WORD(g_ram, address);
-}
-
-unsigned int cpu_read_long_dasm(unsigned int address)
-{
-	if(address > MAX_RAM)
-		exit_error("Dasm attempted to read long from ROM address %08x", address);
-	return READ_LONG(g_ram, address);
-}
-
 
 /* Write data to RAM or a device */
 void cpu_write_byte(unsigned int address, unsigned int value)
