@@ -9,6 +9,8 @@
 #include "cpu_write.h"
 #include "memory_map.h"
 #include "irqs.h"
+#include "nmi.h"
+#include "input_device.h"
 
 void disassemble_program();
 
@@ -95,38 +97,6 @@ int cpu_irq_ack(int level)
 	}
 	return M68K_INT_ACK_SPURIOUS;
 }
-
-/* Implementation for the input device */
-void input_device_reset(void)
-{
-	g_input_device_value = -1;
-	int_controller_clear(IRQ_DATA_RDY);
-}
-
-void input_device_update(void)
-{
-	if(g_input_device_value >= 0)
-		int_controller_set(IRQ_DATA_RDY);
-}
-
-int input_device_ack(void)
-{
-	return M68K_INT_ACK_AUTOVECTOR;
-}
-
-unsigned int input_device_read(void)
-{
-	int value = g_input_device_value > 0 ? g_input_device_value : 0;
-	int_controller_clear(IRQ_DATA_RDY);
-	g_input_device_value = -1;
-	return value;
-}
-
-void input_device_write(unsigned int value)
-{
-	(void)value;
-}
-
 
 /* Implementation for the output device */
 void output_device_reset(void)
