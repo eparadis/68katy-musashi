@@ -6,6 +6,7 @@
 #include "m68k.h"
 #include "osd.h"
 #include "cpu_read.h"
+#include "cpu_write.h"
 #include "memory_map.h"
 
 void disassemble_program();
@@ -25,14 +26,6 @@ void disassemble_program();
 //   clocks  |  sec
 //   sec     |  100 cycles
 #define TIMER_PERIOD (CLOCKS_PER_SEC/100)
-
-#define WRITE_BYTE(BASE, ADDR, VAL) (BASE)[ADDR] = (VAL)&0xff
-#define WRITE_WORD(BASE, ADDR, VAL) (BASE)[ADDR] = ((VAL)>>8) & 0xff;		\
-									(BASE)[(ADDR)+1] = (VAL)&0xff
-#define WRITE_LONG(BASE, ADDR, VAL) (BASE)[ADDR] = ((VAL)>>24) & 0xff;		\
-									(BASE)[(ADDR)+1] = ((VAL)>>16)&0xff;	\
-									(BASE)[(ADDR)+2] = ((VAL)>>8)&0xff;		\
-									(BASE)[(ADDR)+3] = (VAL)&0xff
 
 /* Data */
 unsigned int g_quit = 0;                        /* 1 if we want to quit */
@@ -75,73 +68,6 @@ void exit_error(char* fmt, ...)
 	fprintf(stderr, "At %04x: %s\n", pc, buff);
 
 	exit(EXIT_FAILURE);
-}
-
-/* Write data to RAM or a device */
-void cpu_write_byte(unsigned int address, unsigned int value)
-{
-	if(g_fc & 2)	/* Program */
-		exit_error("Attempted to write %02x to ROM address %08x", value&0xff, address);
-
-	/* Otherwise it's data space */
-  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
-    input_device_write(value&0xff);
-    return;
-  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
-    output_device_write(value&0xff);
-    return;
-  } else if(address >= LED_ADDRESS_LO && address <= LED_ADDRESS_HI) {
-    led_write(value&0xff);
-    return;
-  }
-
-	if(address > MAX_RAM)
-		exit_error("Attempted to write %02x to RAM address %08x", value&0xff, address);
-	WRITE_BYTE(g_ram, address, value);
-}
-
-void cpu_write_word(unsigned int address, unsigned int value)
-{
-	if(g_fc & 2)	/* Program */
-		exit_error("Attempted to write %04x to ROM address %08x", value&0xffff, address);
-
-	/* Otherwise it's data space */
-  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
-    input_device_write(value&0xffff);
-    return;
-  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
-    output_device_write(value&0xffff);
-    return;
-  } else if(address >= LED_ADDRESS_LO && address <= LED_ADDRESS_HI) {
-    led_write(value&0xffff);
-    return;
-  }
-
-	if(address > MAX_RAM)
-		exit_error("Attempted to write %04x to RAM address %08x", value&0xffff, address);
-	WRITE_WORD(g_ram, address, value);
-}
-
-void cpu_write_long(unsigned int address, unsigned int value)
-{
-	if(g_fc & 2)	/* Program */
-		exit_error("Attempted to write %08x to ROM address %08x", value, address);
-
-	/* Otherwise it's data space */
-  if(address >= INPUT_ADDRESS_LO && address <= INPUT_ADDRESS_HI) {
-    input_device_write(value);
-    return;
-  } else if(address >= OUTPUT_ADDRESS_LO && address <= OUTPUT_ADDRESS_HI) {
-    output_device_write(value);
-    return;
-  } else if(address >= LED_ADDRESS_LO && address <= LED_ADDRESS_HI) {
-    led_write(value);
-    return;
-  }
-
-	if(address > MAX_RAM)
-		exit_error("Attempted to write %08x to RAM address %08x", value, address);
-	WRITE_LONG(g_ram, address, value);
 }
 
 /* Called when the CPU pulses the RESET line */
