@@ -8,6 +8,8 @@
 //   sec     |  100 cycles
 #define TIMER_PERIOD (CLOCKS_PER_SEC/100)
 
+int timer_device_ack(void);
+void timer_update(void);
 void timer_device_reset(void);
 
 #endif
