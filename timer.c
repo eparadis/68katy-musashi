@@ -20,5 +20,6 @@ void timer_device_reset(void)
 
 int timer_device_ack(void)
 {
+  int_controller_clear(IRQ_TIMER);
   return M68K_INT_ACK_AUTOVECTOR; // ???
 }
