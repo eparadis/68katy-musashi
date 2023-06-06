@@ -3,7 +3,7 @@ EXENAME          = sim
 OSD_DOS          = osd_dos.c
 
 OSDFILES         = osd_linux.c # $(OSD_DOS)
-MAINFILES        = sim.c cpu_read.c cpu_write.c nmi.c input_device.c output_device.c timer.c
+MAINFILES        = sim.c cpu_read.c cpu_write.c nmi.c input_device.c output_device.c timer.c irqs.c
 MUSASHIFILES     = m68kcpu.c m68kdasm.c softfloat/softfloat.c
 MUSASHIGENCFILES = m68kops.c
 MUSASHIGENHFILES = m68kops.h

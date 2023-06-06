@@ -9,4 +9,8 @@
 #define IRQ_DATA_RDY 2 // signal /IP1, when active there is data to receive
 #define IRQ_NMI 7 // doesn't exist on the real 68Katy
 
+void int_controller_set(unsigned int value);
+void int_controller_clear(unsigned int value);
+int  cpu_irq_ack(int level);
+
 #endif

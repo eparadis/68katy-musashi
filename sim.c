@@ -22,14 +22,6 @@ unsigned int g_nmi = 0;  /* 1 if nmi pending */
 
 int g_input_device_value = -1; /* Current value in input device */
 
-unsigned int g_output_device_ready = 0; /* 1 if output device is ready */
-clock_t g_output_device_last_output;    /* Time of last char output */
-
-unsigned int g_int_controller_pending = 0;     /* list of pending interrupts */
-unsigned int g_int_controller_highest_int = 0; /* Highest pending interrupt */
-
-clock_t g_timer_last_update = 0; /* Time of last timer update */
-
 // unsigned char g_rom[MAX_ROM+1];                 /* ROM */
 unsigned char g_ram[MAX_RAM + 1]; /* RAM */
 unsigned int g_fc;                /* Current function code from CPU */
@@ -70,50 +62,6 @@ void cpu_pulse_reset(void)
 void cpu_set_fc(unsigned int fc)
 {
   g_fc = fc;
-}
-
-/* Called when the CPU acknowledges an interrupt */
-int cpu_irq_ack(int level)
-{
-  switch (level)
-  {
-  case IRQ_NMI:
-    return nmi_device_ack();
-  // case IRQ_INPUT_DEVICE:
-  // return input_device_ack();
-  // case IRQ_OUTPUT_DEVICE:
-  // return output_device_ack();
-  case IRQ_DATA_RDY:
-    return input_device_ack();
-  case IRQ_TIMER:
-    return timer_device_ack();
-  }
-  return M68K_INT_ACK_SPURIOUS;
-}
-
-/* Implementation for the interrupt controller */
-void int_controller_set(unsigned int value)
-{
-  unsigned int old_pending = g_int_controller_pending;
-
-  g_int_controller_pending |= (1 << value);
-
-  if (old_pending != g_int_controller_pending && value > g_int_controller_highest_int)
-  {
-    g_int_controller_highest_int = value;
-    m68k_set_irq(g_int_controller_highest_int);
-  }
-}
-
-void int_controller_clear(unsigned int value)
-{
-  g_int_controller_pending &= ~(1 << value);
-
-  for (g_int_controller_highest_int = 7; g_int_controller_highest_int > 0; g_int_controller_highest_int--)
-    if (g_int_controller_pending & (1 << g_int_controller_highest_int))
-      break;
-
-  m68k_set_irq(g_int_controller_highest_int);
 }
 
 /* Parse user input and update any devices that need user input */

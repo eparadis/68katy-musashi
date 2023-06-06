@@ -2,8 +2,8 @@
 #include "m68k.h"
 #include <stdio.h>
 
-extern unsigned int g_output_device_last_output;
-extern int g_output_device_ready;
+unsigned int g_output_device_ready = 0; /* 1 if output device is ready */
+clock_t g_output_device_last_output;    /* Time of last char output */
 
 /* Implementation for the output device */
 void output_device_reset(void)

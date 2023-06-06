@@ -2,7 +2,7 @@
 #include "irqs.h"
 #include "m68k.h"
 
-extern unsigned int g_timer_last_update;
+clock_t g_timer_last_update = 0; /* Time of last timer update */
 
 /* Implementation for the timer device */
 void timer_update() {
