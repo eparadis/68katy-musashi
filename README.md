@@ -25,29 +25,42 @@ PCB 68 KATY
 ```
 
 # TODO
-1. Fix character double echo bug
-2. Set `termios` to prevent capture of control characters and allow them to pass through to the emulated input device
-3. Implement a series of characters that pause emulation to allow inspection of the machine, exiting to the monitor, and exiting the emulator
+1. ~~Fix character double echo bug~~
+2. Set `termios` to prevent capture of control characters and allow them to pass through to the emulated input device. CTRL-D and CTRL-H work, amongst others. But CTRL-C is caught by the outer terminal.
+3. Use NMI to pause emulation to allow inspection of the machine, exiting to the monitor, and exiting the emulator.
 4. Scale emulated cpu speed by adjusting the number of cycles run per loop
 5. Setup a cross-compiling environment and build some programming language to add to the uClinux image
 6. Emulate some type of storage device so everything doesn't have to live in the "ROM" image
 7. "Upgrade" the emulated CPU to a 68030 and try out images that require an MMU
 
 # Example session
-(note wierd double echo bug)
 ```
-ed@MacBook-Air:~/git/68katy-musashi $ make && ./sim rom-images/monitor-plus-linux-pcb.bin 
-make: Nothing to be done for `all'.
+ed@MacBook-Air:~/git/68katy-musashi $ make && ./sim rom-images/monitor-plus-linux-pcb.bin
+gcc -Wall -Wextra -pedantic   -c -o sim.o sim.c
+gcc -Wall -Wextra -pedantic   -c -o cpu_read.o cpu_read.c
+gcc -Wall -Wextra -pedantic   -c -o cpu_write.o cpu_write.c
+gcc -Wall -Wextra -pedantic   -c -o nmi.o nmi.c
+gcc -Wall -Wextra -pedantic   -c -o input_device.o input_device.c
+gcc -Wall -Wextra -pedantic   -c -o output_device.o output_device.c
+gcc -Wall -Wextra -pedantic   -c -o timer.o timer.c
+gcc -Wall -Wextra -pedantic   -c -o irqs.o irqs.c
+gcc -Wall -Wextra -pedantic   -c -o osd_linux.o osd_linux.c
+gcc -Wall -Wextra -pedantic   -c -o m68kcpu.o m68kcpu.c
+gcc -Wall -Wextra -pedantic   -c -o osd_linux.o osd_linux.c
+<------ a bunch of warnings in Musashi's m68kfpu.c omitted ------>
+gcc -Wall -Wextra -pedantic   -c -o m68kdasm.o m68kdasm.c
+gcc -Wall -Wextra -pedantic   -c -o m68kops.o m68kops.c
+gcc -o sim sim.o cpu_read.o cpu_write.o nmi.o input_device.o output_device.o timer.o irqs.o osd_linux.o m68kcpu.o m68kdasm.o softfloat/softfloat.o m68kops.o -Wall -Wextra -pedantic -lm
 Boot from RESET vector
 
 zBug(ROM) for 68Katy (press ? for help)
 
-084000>jjump to address 084000>000033000000
+084000>jump to address 084000>003000
 
 uClinux/MC68000
 Flat model support (C) 1998,1999 Kenneth Albanowski, D. Jeff Dionne
 MC68000 68 Katy support by Big Mess o' Wires, Steve Chamberlin
-Calibrating delay loop.. ok - 40.03 BogoMIPS
+Calibrating delay loop.. ok - 40.85 BogoMIPS
 Memory available: 388k/495k RAM, 240k/480k ROM (240k kernel code, 104k data)
 Swansea University Computer Society NET3.035 for Linux 2.0
 NET3: Unix domain sockets 0.13 for Linux NET3.035.
@@ -86,15 +99,14 @@ Command:
 Execution Finished, Exiting
 
 Sash command shell (version 1.1.1)
-/> llss  bbiinn
+/> ls bin
 advent4
 expand
 init
 ledblink
 sh
 vi
-/> aaddvveenntt44
-
+/> advent4
 
                               Welcome to 
 
@@ -109,27 +121,22 @@ vi
 
 Would you like instructions?
 
->nnoo
-
+>no
 You are inside a building, a well house for a large spring.
 There are some keys on the ground here.
 There is a shiny brass lamp nearby.
 There is tasty food here.
 There is a bottle of water here.
->ttaakkee  kkeeyyss
-
-ok.
->qquuiitt
-
+>quit
 Do you really want to quit now?
->yyeess
-
+>yes
 ok.
 Treasures:          0
 Survival:           30
 Score:              32
 pid 6: failed 65280
-/> ^[ed@MacBook-Air:~/git/68katy-musashi $ 
+/> # pressing ESC to quit
+/> ed@MacBook-Air:~/git/68katy-musashi $ 
 ```
 
 # Similar projects
