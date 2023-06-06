@@ -12,13 +12,9 @@
 #include "nmi.h"
 #include "input_device.h"
 #include "output_device.h"
+#include "timer.h"
 
 void disassemble_program();
-
-// Timer period in clock_t units
-//   clocks  |  sec
-//   sec     |  100 cycles
-#define TIMER_PERIOD (CLOCKS_PER_SEC/100)
 
 /* Data */
 unsigned int g_quit = 0;                        /* 1 if we want to quit */
@@ -94,25 +90,6 @@ int cpu_irq_ack(int level)
       return timer_device_ack();
 	}
 	return M68K_INT_ACK_SPURIOUS;
-}
-
-/* Implementation for the timer device */
-void timer_update() {
-  if( clock() - g_timer_last_update >= TIMER_PERIOD ) {
-    g_timer_last_update = clock();
-    int_controller_set(IRQ_TIMER);
-  }
-}
-
-void timer_device_reset(void)
-{
-  g_timer_last_update = clock();
-  int_controller_clear(IRQ_TIMER);
-}
-
-int timer_device_ack(void)
-{
-  return M68K_INT_ACK_AUTOVECTOR; // ???
 }
 
 /* Implementation for the interrupt controller */
