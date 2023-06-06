@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <time.h>
+#include <termios.h>
+#include <unistd.h>
 #include "sim.h"
 #include "m68k.h"
 #include "osd.h"
@@ -26,6 +28,8 @@ int g_input_device_value = -1; /* Current value in input device */
 unsigned char g_ram[MAX_RAM + 1]; /* RAM */
 unsigned int g_fc;                /* Current function code from CPU */
 
+struct termios oldtio, newtio;
+
 /* Exit with an error message.  Use printf syntax. */
 void exit_error(char *fmt, ...)
 {
@@ -47,6 +51,7 @@ void exit_error(char *fmt, ...)
   m68k_disassemble(buff, pc, M68K_CPU_TYPE_68000);
   fprintf(stderr, "At %04x: %s\n", pc, buff);
 
+  resetTerminal();
   exit(EXIT_FAILURE);
 }
 
@@ -86,6 +91,26 @@ void get_user_input(void)
     }
   }
   last_ch = ch;
+}
+
+void setupTerminal() {
+  // largely from pforth pf_io_posix.c
+  tcgetattr(STDIN_FILENO, &oldtio);
+  tcgetattr(STDIN_FILENO, &newtio);
+  newtio.c_lflag &= ~( ECHO | ECHONL | ECHOCTL | ICANON );
+  newtio.c_cc[VTIME] = 0;
+  newtio.c_cc[VMIN] = 1;
+  //cfmakeraw(&newtio); // use this instead of the three lines above if you want the VM to be able to output CR and LF independently
+  if( tcsetattr(STDIN_FILENO, TCSANOW, &newtio) < 0 ) {
+    printf("error setting terminal");
+  }
+  // remove buffers from stdin & stdout 
+  setvbuf(stdin, NULL, _IONBF, 0);
+  setvbuf(stdout, NULL, _IONBF, 0);
+}
+
+void resetTerminal() {
+  tcsetattr(STDIN_FILENO, TCSANOW, &oldtio);
 }
 
 /* Disassembler */
@@ -159,6 +184,7 @@ int main(int argc, char *argv[])
 
   //	disassemble_program();
 
+  setupTerminal();
   m68k_init();
   m68k_set_cpu_type(M68K_CPU_TYPE_68000);
   m68k_pulse_reset();
@@ -188,5 +214,6 @@ int main(int argc, char *argv[])
     timer_update();
   }
 
+  resetTerminal();
   return 0;
 }

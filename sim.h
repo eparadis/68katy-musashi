@@ -16,4 +16,7 @@ void cpu_set_fc(unsigned int fc);
 
 void get_user_input(void);
 
+void setupTerminal(void);
+void resetTerminal(void);
+
 #endif /* SIM__HEADER */
