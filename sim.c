@@ -179,6 +179,9 @@ int main(int argc, char *argv[])
 
     // Note that I am not emulating the correct clock speed!
     m68k_execute(100000);
+
+    // update all the emulated devices.
+    // they handle their own state, raising IRQs, etc
     output_device_update();
     input_device_update();
     nmi_device_update();
