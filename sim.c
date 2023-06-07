@@ -104,13 +104,18 @@ void setupTerminal() {
   if( tcsetattr(STDIN_FILENO, TCSANOW, &newtio) < 0 ) {
     printf("error setting terminal");
   }
+
   // remove buffers from stdin & stdout 
   setvbuf(stdin, NULL, _IONBF, 0);
   setvbuf(stdout, NULL, _IONBF, 0);
+
+  // ignore SIGINT
+  signal(SIGINT, SIG_IGN);
 }
 
 void resetTerminal() {
   tcsetattr(STDIN_FILENO, TCSANOW, &oldtio);
+  signal(SIGINT, SIG_DFL);
 }
 
 /* Disassembler */
