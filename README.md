@@ -26,7 +26,7 @@ PCB 68 KATY
 
 # TODO
 1. ~~Fix character double echo bug~~
-2. Set `termios` to prevent capture of control characters and allow them to pass through to the emulated input device. CTRL-D and CTRL-H work, amongst others. But CTRL-C is caught by the outer terminal.
+2. ~~Set `signal` to prevent capture of control characters and allow them to pass through to the emulated input device. CTRL-D and CTRL-H work, amongst others. But CTRL-C is caught by the outer terminal.~~
 3. Use NMI to pause emulation to allow inspection of the machine, exiting to the monitor, and exiting the emulator.
 4. Scale emulated cpu speed by adjusting the number of cycles run per loop
 5. Setup a cross-compiling environment and build some programming language to add to the uClinux image
