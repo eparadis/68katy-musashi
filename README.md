@@ -27,10 +27,10 @@ PCB 68 KATY
 # TODO
 1. ~~Fix character double echo bug~~
 2. ~~Set `signal` to prevent capture of control characters and allow them to pass through to the emulated input device. CTRL-D and CTRL-H work, amongst others. But CTRL-C is caught by the outer terminal.~~
-3. Use NMI to pause emulation to allow inspection of the machine, exiting to the monitor, and exiting the emulator.
-4. Scale emulated cpu speed by adjusting the number of cycles run per loop
+3. ~~Scale emulated cpu speed by adjusting the number of cycles run per loop~~
+4. Use "three tilde" escape sequence to pause emulation and open a menu to allow things like inspection of the machine, jumping to the monitor, and exiting the emulator.
 5. Setup a cross-compiling environment and build some programming language to add to the uClinux image
-6. Emulate some type of storage device so everything doesn't have to live in the "ROM" image
+6. Emulate some type of storage device so everything doesn't have to live in the boot image
 7. "Upgrade" the emulated CPU to a 68030 and try out images that require an MMU
 
 # Example session
