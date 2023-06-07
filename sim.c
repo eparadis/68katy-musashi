@@ -177,6 +177,7 @@ void cpu_instr_callback(int _pc)
 int main(int argc, char *argv[])
 {
   FILE *fhandle;
+  clock_t prev_loop;
 
   if (argc != 2)
   {
@@ -202,18 +203,15 @@ int main(int argc, char *argv[])
   flag_quit = 0;
   while (!flag_quit)
   {
-    // Our loop requires some interleaving to allow us to update the
-    // input, output, and nmi devices.
+    // interleave running the cpu and the devices
 
+    // use clock() to find out how long it's been since we executed cycles
+    // then execute the number of cycles that should have run in that time for our processor speed
+    m68k_execute((clock() - prev_loop) * M68K_CLOCK_SPEED / CLOCKS_PER_SEC);
+    prev_loop = clock();
+
+    // handle terminal input
     get_user_input();
-
-    // Values to execute determine the interleave rate.
-    // Smaller values allow for more accurate interleaving with multiple
-    // devices/CPUs but is more processor intensive.
-    // 100000 is usually a good value to start at, then work from there.
-
-    // Note that I am not emulating the correct clock speed!
-    m68k_execute(100000);
 
     // update all the emulated devices.
     // they handle their own state, raising IRQs, etc
