@@ -73,21 +73,27 @@ void cpu_set_fc(unsigned int fc)
 void get_user_input(void)
 {
   static int last_ch = -1;
+  static int tilde_count = 0;
   int ch = osd_get_char();
 
   if (ch >= 0)
   {
     switch (ch)
     {
-    case 0x1b:
-      flag_quit = 1;
-      break;
     case '~':
+      // press '~' three times to quit
+      tilde_count += 1;
+      if( tilde_count >= 3) {
+        flag_quit = 1;
+        tilde_count = 0;
+      }
+      // otherwise press '~' to cause an NMI
       if (last_ch != ch)
         flag_nmi_pending = 1;
       break;
     default:
       g_input_device_value = ch;
+      tilde_count = 0;
     }
   }
   last_ch = ch;
