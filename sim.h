@@ -5,6 +5,8 @@
 // so include the definition of our IRQ handler function here
 #include "irqs.h"
 
+void disassemble_program();
+
 void cpu_pulse_reset(void);
 void cpu_set_fc(unsigned int fc);
 void cpu_instr_callback(int pc);

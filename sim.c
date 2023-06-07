@@ -16,8 +16,6 @@
 #include "output_device.h"
 #include "timer.h"
 
-void disassemble_program();
-
 /* Data */
 unsigned int flag_quit = 0; /* 1 if we want to quit */
 unsigned int flag_nmi_pending = 0;  /* 1 if nmi pending */
