@@ -4,6 +4,7 @@
 #include <time.h>
 #include <termios.h>
 #include <unistd.h>
+#include <signal.h>
 #include "sim.h"
 #include "m68k.h"
 #include "osd.h"
